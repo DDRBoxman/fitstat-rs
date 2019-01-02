@@ -14,7 +14,7 @@ const FIT_STAT_PRODUCT_ID: u16 = 0x03df;
            */
 
 pub struct FitStatDevice {
-    _port: Box<dyn serialport::SerialPort>,
+    port: Box<dyn serialport::SerialPort>,
 }
 
 impl FitStatDevice {
@@ -26,7 +26,7 @@ impl FitStatDevice {
                         SerialPortType::UsbPort(info) => {
                             if info.vid == FIT_STAT_VENDOR_ID && info.pid == FIT_STAT_PRODUCT_ID {
                                 match serialport::open(&p.port_name) {
-                                    Ok(port) => return Ok(FitStatDevice { _port: port}),
+                                    Ok(port) => return Ok(FitStatDevice { port: port}),
                                     Err(e) => return Err(e)
                                 }
                             }
@@ -47,6 +47,6 @@ impl FitStatDevice {
 
     pub fn fade_to_rgb(&mut self, r: u8, g: u8, b: u8) -> Result<(), std::io::Error> {
         let formatted_message = format!("#{:02X}{:02X}{:02X}\n", r, g, b);
-        self._port.write_all(formatted_message.as_bytes())
+        self.port.write_all(formatted_message.as_bytes())
     }
 }
