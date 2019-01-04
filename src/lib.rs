@@ -18,15 +18,23 @@ pub struct FitStatDevice {
 }
 
 impl FitStatDevice {
-    pub fn find_first() -> Result<FitStatDevice, serialport::Error> {
+    fn open_internal(serial_number: Option<&str>) -> Result<FitStatDevice, serialport::Error> {
         match serialport::available_ports() {
             Ok(ports) => {
                 for p in ports {
                     match p.port_type {
                         SerialPortType::UsbPort(info) => {
                             if info.vid == FIT_STAT_VENDOR_ID && info.pid == FIT_STAT_PRODUCT_ID {
+                                if let Some(wanted_serial_number) = serial_number {
+                                    if let Some(p_serial) = info.serial_number {
+                                        if  p_serial != wanted_serial_number {
+                                            continue
+                                        }
+                                    }
+                                }
+
                                 match serialport::open(&p.port_name) {
-                                    Ok(port) => return Ok(FitStatDevice { port: port}),
+                                    Ok(port) => return Ok(FitStatDevice { port }),
                                     Err(e) => return Err(e)
                                 }
                             }
@@ -36,6 +44,38 @@ impl FitStatDevice {
                 }
 
                 return Err(serialport::Error::new(serialport::ErrorKind::NoDevice, "No fitstat device found"))
+            },
+            Err(e) => return Err(e)
+        }
+    }
+
+    pub fn open_first() -> Result<FitStatDevice, serialport::Error> {
+        FitStatDevice::open_internal(None)
+    }
+
+    pub fn open(serial_number: &str) -> Result<FitStatDevice, serialport::Error> {
+        FitStatDevice::open_internal(Some(serial_number))
+    }
+
+    pub fn get_serial_numbers() -> Result<Vec<String>, serialport::Error> {
+        match serialport::available_ports() {
+            Ok(ports) => {
+                let mut vec: Vec<String> = Vec::new();
+
+                for p in ports {
+                    match p.port_type {
+                        SerialPortType::UsbPort(info) => {
+                            if info.vid == FIT_STAT_VENDOR_ID && info.pid == FIT_STAT_PRODUCT_ID {
+                                if let Some(serial_number) = info.serial_number {
+                                    vec.push(serial_number.to_owned());
+                                }
+                            }
+                        },
+                        _ => continue
+                    }
+                }
+
+                return Ok(vec);
             },
             Err(e) => return Err(e)
         }
